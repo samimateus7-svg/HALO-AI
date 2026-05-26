@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HALO AI</title>
+
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+
+        body{
+            background:#0f1117;
+            color:white;
+            font-family:Arial, Helvetica, sans-serif;
+            height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+
+        .container{
+            width:95%;
+            max-width:900px;
+            height:90vh;
+            background:#1a1d29;
+            border-radius:16px;
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+            box-shadow:0 0 25px rgba(0,0,0,0.4);
+        }
+
+        .header{
+            padding:20px;
+            background:#202534;
+            border-bottom:1px solid #2d3347;
+        }
+
+        .header h1{
+            font-size:24px;
+            color:#7aa2ff;
+        }
+
+        .chat{
+            flex:1;
+            padding:20px;
+            overflow-y:auto;
+            display:flex;
+            flex-direction:column;
+            gap:15px;
+        }
+
+        .message{
+            max-width:80%;
+            padding:14px;
+            border-radius:14px;
+            line-height:1.5;
+            white-space:pre-wrap;
+            word-wrap:break-word;
+        }
+
+        .user{
+            align-self:flex-end;
+            background:#4c7dff;
+        }
+
+        .bot{
+            align-self:flex-start;
+            background:#2a3042;
+        }
+
+        .input-area{
+            display:flex;
+            gap:10px;
+            padding:20px;
+            border-top:1px solid #2d3347;
+            background:#202534;
+        }
+
+        input{
+            flex:1;
+            padding:14px;
+            border:none;
+            border-radius:10px;
+            background:#2a3042;
+            color:white;
+            font-size:16px;
+            outline:none;
+        }
+
+        button{
+            padding:14px 22px;
+            border:none;
+            border-radius:10px;
+            background:#4c7dff;
+            color:white;
+            font-size:16px;
+            cursor:pointer;
+            transition:0.2s;
+        }
+
+        button:hover{
+            background:#6a94ff;
+        }
+
+        .typing{
+            opacity:0.7;
+            font-style:italic;
+        }
+
+        ::-webkit-scrollbar{
+            width:8px;
+        }
+
+        ::-webkit-scrollbar-thumb{
+            background:#3a425a;
+            border-radius:10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="header">
+            <h1>HALO AI</h1>
+        </div>
+
+        <div class="chat" id="chat"></div>
+
+        <div class="input-area">
+            <input 
+                type="text" 
+                id="prompt" 
+                placeholder="Escribe un mensaje..."
+                onkeydown="if(event.key==='Enter') enviarMensaje()"
+            >
+
+            <button onclick="enviarMensaje()">
+                Enviar
+            </button>
+        </div>
+
+    </div>
+
+<script>
+
+const chat = document.getElementById("chat");
+const input = document.getElementById("prompt");
+
+function agregarMensaje(texto, clase){
+
+    const div = document.createElement("div");
+
+    div.classList.add("message");
+    div.classList.add(clase);
+
+    div.textContent = texto;
+
+    chat.appendChild(div);
+
+    chat.scrollTop = chat.scrollHeight;
+
+    return div;
+}
+
+async function enviarMensaje(){
+
+    const mensaje = input.value.trim();
+
+    if(!mensaje) return;
+
+    agregarMensaje(mensaje, "user");
+
+    input.value = "";
+
+    const botMessage = agregarMensaje("...", "bot");
+    botMessage.classList.add("typing");
+
+    try{
+
+        const res = await fetch("http://192.168.1.9:5000/chat", {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+                prompt:mensaje
+            })
+        });
+
+        if(!res.ok){
+
+            botMessage.textContent = "Error del servidor.";
+            return;
+        }
+
+        botMessage.textContent = "";
+        botMessage.classList.remove("typing");
+
+        const reader = res.body.getReader();
+
+        const decoder = new TextDecoder();
+
+        while(true){
+
+            const {done, value} = await reader.read();
+
+            if(done) break;
+
+            const chunk = decoder.decode(value);
+
+            botMessage.textContent += chunk;
+
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+    }catch(error){
+
+        botMessage.textContent = "No se pudo conectar con HALO AI.";
+        console.error(error);
+    }
+}
+
+</script>
+
+</body>
+</html>
